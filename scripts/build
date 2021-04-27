@@ -1,0 +1,24 @@
+#!/bin/bash
+
+rm -rf /tmp/steins/
+mkdir -p /tmp/steins/build/ || exit 1
+CGO_ENABLED=0 go build -v -o /tmp/steins/build/steins cmd/steins/main.go || exit 1
+cp build/Dockerfile /tmp/steins/build/ || exit 1
+
+case "$1" in
+
+"bundle")
+  cp "$2" "$3" /tmp/steins/build/ || exit 1
+  ;;
+
+"example")
+  cp examples/server.crt examples/server.key /tmp/steins/build/ || exit 1
+  ;;
+
+*)
+  sed -i -E '/.*server.*/d' /tmp/steins/build/Dockerfile || exit 1
+  ;;
+esac
+
+cd /tmp/steins/build/ && docker build -t steins:"$(date +"%Y%m%d")" .
+rm -rf /tmp/steins/
