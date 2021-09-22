@@ -55,7 +55,7 @@ $ docker run --restart always -p 443:443 -v /var/run/docker.sock:/var/run/docker
 
 If public key and private key are not bundled, run:
 ```
-$ docker run --restart always -p 443:443 -v /path/to/public/key:/server.crt -v /path/to/private/key/server.key -v /var/run/docker.sock:/var/run/docker.sock --network my-net -d -i steins:20210427
+$ docker run --restart always -p 443:443 -v /path/to/public/key:/server.crt -v /path/to/private/key:/server.key -v /var/run/docker.sock:/var/run/docker.sock --network my-net -d -i steins:20210427
 ```
 
 > Please be aware that steins only detects virtual host web applications at startup. Thus, you may want to restart steins if you have changed domain or port configuration.
