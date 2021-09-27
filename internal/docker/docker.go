@@ -1,41 +1,24 @@
 package docker
 
 import (
-	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
-	"golang.org/x/net/context"
-	"strconv"
-	"sync"
+	"log"
 )
 
-func GetVirtualHosts() (sync.Map, error) {
-	m := sync.Map{}
+var (
+	cli *client.Client
+)
 
-	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+func init() {
+	var err error
+	cli, err = client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err != nil {
-		return sync.Map{}, err
+		log.Fatalln(err)
 	}
 
-	containers, err := cli.ContainerList(context.Background(), types.ContainerListOptions{})
-	if err != nil {
-		panic(err)
-	}
-
-	for _, container := range containers {
-		domain, ok := container.Labels["proxy.steins.server.name"]
-		if !ok {
-			continue
+	if !isNetworkExisted() {
+		if err := createNetwork(); err != nil {
+			log.Fatalln(err)
 		}
-
-		port, ok := container.Labels["proxy.steins.server.proxy_port"]
-		if !ok {
-			port = strconv.Itoa(80)
-		}
-
-		ipAddr := container.NetworkSettings.Networks[container.HostConfig.NetworkMode].IPAddress
-
-		m.Store(domain, ipAddr + ":" + port)
 	}
-
-	return m, nil
 }

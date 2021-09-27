@@ -11,7 +11,7 @@ import (
 func main() {
 	virtualHosts, err := docker.GetVirtualHosts()
 	if err != nil {
-		log.Panic(err)
+		log.Fatalln(err)
 	}
 
 	mux := http.NewServeMux()
@@ -27,7 +27,7 @@ func main() {
 			return
 		}
 
-		ip, ok := virtualHosts.Load(strings.Split(r.Host, ":")[0])
+		ip, ok := virtualHosts.LoadWithReacquire(strings.Split(r.Host, ":")[0])
 
 		if !ok {
 			w.WriteHeader(http.StatusNotFound)
@@ -38,7 +38,7 @@ func main() {
 			req.Header = r.Header
 			req.URL = r.URL
 			req.URL.Scheme = "http"
-			req.URL.Host = ip.(string)
+			req.URL.Host = ip
 		}
 		proxy := &httputil.ReverseProxy{Director: director}
 		proxy.ServeHTTP(w, r)
