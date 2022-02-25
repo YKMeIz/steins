@@ -9,7 +9,7 @@ var (
 	cli *client.Client
 )
 
-func init() {
+func NetworkInit() {
 	var err error
 	cli, err = client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err != nil {

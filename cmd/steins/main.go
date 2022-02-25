@@ -2,16 +2,37 @@ package main
 
 import (
 	"github.com/YKMeIz/steins/internal/docker"
+	"github.com/YKMeIz/steins/internal/podman"
 	"log"
 	"net/http"
 	"net/http/httputil"
 	"strings"
 )
 
+var mode string
+
+func redirectTLS(w http.ResponseWriter, r *http.Request) {
+	http.Redirect(w, r, "https://"+r.Host+r.RequestURI, http.StatusMovedPermanently)
+}
+
+func init() {
+	go func() {
+		if err := http.ListenAndServe(":80", http.HandlerFunc(redirectTLS)); err != nil {
+			log.Fatalf("ListenAndServe error: %v", err)
+		}
+	}()
+}
+
 func main() {
-	virtualHosts, err := docker.GetVirtualHosts()
+	virtualHosts, err := podman.GetVirtualHosts()
 	if err != nil {
-		log.Fatalln(err)
+		log.Println("error from podman:", err.Error())
+		docker.NetworkInit()
+		virtualHosts, err = docker.GetVirtualHosts()
+		if err != nil {
+			panic(err)
+		}
+		mode = "docker"
 	}
 
 	mux := http.NewServeMux()
@@ -27,7 +48,16 @@ func main() {
 			return
 		}
 
-		ip, ok := virtualHosts.LoadWithReacquire(strings.Split(r.Host, ":")[0])
+		var (
+			ip string
+			ok bool
+		)
+
+		if mode == "docker" {
+			ip, ok = virtualHosts.LoadWithReacquire(strings.Split(r.Host, ":")[0])
+		} else {
+			ip, ok = podman.LoadWithReacquire(virtualHosts, strings.Split(r.Host, ":")[0])
+		}
 
 		if !ok {
 			w.WriteHeader(http.StatusNotFound)

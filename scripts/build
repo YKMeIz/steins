@@ -1,8 +1,22 @@
 #!/bin/bash
 
+docker version
+exit_status=$?
+if [[ $exit_status -eq 0 ]]; then
+  CONTAINER_BUILDER=docker
+else
+  CONTAINER_BUILDER=podman
+fi
+
 rm -rf /tmp/steins/
 mkdir -p /tmp/steins/build/ || exit 1
-CGO_ENABLED=0 go build -v -o /tmp/steins/build/steins cmd/steins/main.go || exit 1
+#CGO_ENABLED=0 go build -v -o /tmp/steins/build/steins cmd/steins/main.go || exit 1
+$CONTAINER_BUILDER run --rm \
+  -v /tmp/steins/build/:/tmp/steins/build/ \
+  -v "$PWD":/steins \
+  -i registry.access.redhat.com/ubi8/ubi \
+  /bin/bash -c "dnf install -y golang gpgme-devel device-mapper-devel pkgconf libassuan-devel && cd /steins && go mod tidy && go build -tags exclude_graphdriver_btrfs -v -o /tmp/steins/build/steins /steins/cmd/steins/main.go" || exit 1
+#go build -v -o /tmp/steins/build/steins cmd/steins/main.go || exit 1
 cp build/Dockerfile /tmp/steins/build/ || exit 1
 
 case "$1" in
@@ -20,5 +34,6 @@ case "$1" in
   ;;
 esac
 
-cd /tmp/steins/build/ && docker build -t steins:"$(date +"%Y%m%d")" .
+cd /tmp/steins/build/ && $CONTAINER_BUILDER build -t steins:"$(date +"%Y%m%d")" .
 rm -rf /tmp/steins/
+$CONTAINER_BUILDER rmi registry.access.redhat.com/ubi8/ubi:latest
